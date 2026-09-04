@@ -1,0 +1,115 @@
+replicaCount: 1
+
+image:
+  repository: ""
+  # Defaults to .Chart.AppVersion if not set
+  tag: ""
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  # If not set, a name is generated from the fullname template
+  name: ""
+  annotations: {}
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 25%
+    maxUnavailable: 25%
+
+containerPort: 8080
+
+# Health check defaults target Spring Boot Actuator endpoints.
+# For Quarkus, override with /q/health, /q/health/ready, /q/health/live.
+health:
+  startup:
+    path: /actuator/health
+    failureThreshold: 30
+    periodSeconds: 2
+  readiness:
+    path: /actuator/health/readiness
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 2
+  liveness:
+    path: /actuator/health/liveness
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 2
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+securityContext:
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+terminationGracePeriodSeconds: 60
+
+# Direct env vars: [{name: FOO, value: bar}]
+env: []
+
+# References to existing Secrets/ConfigMaps for env injection:
+# [{configMapRef: {name: my-config}}, {secretRef: {name: my-secret}}]
+envFrom: []
+
+# Mount an existing ConfigMap as a volume (e.g. application.properties)
+configMap:
+  mount:
+    enabled: false
+    name: ""
+    mountPath: /deployments/config
+
+# Mount an existing Secret as a volume (e.g. keystores, credentials files)
+secret:
+  mount:
+    enabled: false
+    name: ""
+    mountPath: /deployments/secret
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+# OpenShift Route (enabled by default)
+route:
+  enabled: true
+  hostname: ""
+  tls:
+    termination: edge
+
+# Dockerfile generation (used by Konveyor's extended templating for non-YAML files)
+dockerfile:
+  buildImage: registry.access.redhat.com/ubi9/openjdk-21:latest
+  runtimeImage: registry.access.redhat.com/ubi9/openjdk-21-runtime:latest
+  # Additional Maven arguments (e.g. -Pprod, -pl submodule)
+  mavenArgs: ""
+  # JVM flags for the runtime (e.g. -Xmx512m -XX:+UseG1GC)
+  javaOpts: ""
+
+# Kubernetes Ingress (disabled by default)
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts: []
+  #  - host: app.example.com
+  #    paths:
+  #      - path: /
+  #        pathType: Prefix
+  tls: []
+  #  - secretName: app-tls
+  #    hosts:
+  #      - app.example.com

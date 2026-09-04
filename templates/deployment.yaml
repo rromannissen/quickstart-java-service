@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "quickstart-java-service.fullname" . }}
+  labels:
+    {{- include "quickstart-java-service.labels" . | nindent 4 }}
+  {{- with (include "quickstart-java-service.konveyorAnnotations" . | fromYaml) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "quickstart-java-service.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: {{ .Values.strategy.type }}
+    {{- if eq .Values.strategy.type "RollingUpdate" }}
+    rollingUpdate:
+      maxSurge: {{ .Values.strategy.rollingUpdate.maxSurge }}
+      maxUnavailable: {{ .Values.strategy.rollingUpdate.maxUnavailable }}
+    {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "quickstart-java-service.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "quickstart-java-service.serviceAccountName" . }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      containers:
+        - name: {{ include "quickstart-java-service.name" . }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort }}
+              protocol: TCP
+          {{- with .Values.env }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.envFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.health.startup.path }}
+              port: http
+            failureThreshold: {{ .Values.health.startup.failureThreshold }}
+            periodSeconds: {{ .Values.health.startup.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.health.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.health.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.health.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.health.readiness.timeoutSeconds }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.health.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.health.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.health.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.health.liveness.timeoutSeconds }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- if or .Values.configMap.mount.enabled .Values.secret.mount.enabled }}
+          volumeMounts:
+            {{- if .Values.configMap.mount.enabled }}
+            - name: config-volume
+              mountPath: {{ .Values.configMap.mount.mountPath }}
+            {{- end }}
+            {{- if .Values.secret.mount.enabled }}
+            - name: secret-volume
+              mountPath: {{ .Values.secret.mount.mountPath }}
+              readOnly: true
+            {{- end }}
+          {{- end }}
+      {{- if or .Values.configMap.mount.enabled .Values.secret.mount.enabled }}
+      volumes:
+        {{- if .Values.configMap.mount.enabled }}
+        - name: config-volume
+          configMap:
+            name: {{ .Values.configMap.mount.name }}
+        {{- end }}
+        {{- if .Values.secret.mount.enabled }}
+        - name: secret-volume
+          secret:
+            secretName: {{ .Values.secret.mount.name }}
+        {{- end }}
+      {{- end }}

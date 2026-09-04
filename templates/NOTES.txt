@@ -1,0 +1,19 @@
+{{ include "quickstart-java-service.fullname" . }} has been deployed.
+
+{{- if .Values.route.enabled }}
+
+Get the application URL via OpenShift Route:
+  oc get route {{ include "quickstart-java-service.fullname" . }} -o jsonpath='{.spec.host}'
+
+{{- else if .Values.ingress.enabled }}
+
+Get the application URL via Ingress:
+  kubectl get ingress {{ include "quickstart-java-service.fullname" . }} -o jsonpath='{.spec.rules[0].host}'
+
+{{- else }}
+
+No Route or Ingress is enabled. Access the application via port-forward:
+  kubectl port-forward svc/{{ include "quickstart-java-service.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+  echo "Visit http://localhost:{{ .Values.service.port }}"
+
+{{- end }}

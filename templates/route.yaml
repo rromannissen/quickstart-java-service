@@ -1,0 +1,24 @@
+{{- if .Values.route.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "quickstart-java-service.fullname" . }}
+  labels:
+    {{- include "quickstart-java-service.labels" . | nindent 4 }}
+  {{- with (include "quickstart-java-service.konveyorAnnotations" . | fromYaml) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.route.hostname }}
+  host: {{ .Values.route.hostname }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "quickstart-java-service.fullname" . }}
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: {{ .Values.route.tls.termination }}
+{{- end }}
