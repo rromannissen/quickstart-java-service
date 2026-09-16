@@ -10,14 +10,20 @@ A Helm chart for deploying Java microservices (Spring Boot / Quarkus) on OpenShi
 ## Quick Start
 
 ```bash
-helm template my-release . --set image.repository=quay.io/example/myapp | oc apply -f -
+helm template my-release . --set application.name=myapp | oc apply -f -
+```
+
+For an external registry (e.g., Quay):
+
+```bash
+helm template my-release . --set image.ref=quay.io/acme/myapp:v1.0.0 | oc apply -f -
 ```
 
 For Quarkus applications, override the health check paths:
 
 ```bash
 helm template my-release . \
-  --set image.repository=quay.io/example/myapp \
+  --set application.name=myapp \
   --set health.startup.path=/q/health \
   --set health.readiness.path=/q/health/ready \
   --set health.liveness.path=/q/health/live
@@ -35,11 +41,23 @@ helm template my-release . \
 
 ## Configuration
 
-### Image
+### Namespace
 
 | Parameter | Description | Default |
 |---|---|---|
-| `image.repository` | Container image repository | `""` |
+| `namespace` | Target namespace (also used in image registry path) | `application.name` or `"default"` |
+
+### Image
+
+The image reference supports two modes:
+
+- **`image.ref`** — full image reference for external registries (e.g., `quay.io/acme/myapp:v1.0.0`). Overrides all other image settings.
+- **Built from parts** (default) — `<registry>/<namespace>/<fullname>:<tag>`, using the OpenShift internal registry.
+
+| Parameter | Description | Default |
+|---|---|---|
+| `image.ref` | Full image reference (overrides registry/namespace/name convention) | `""` |
+| `image.registry` | Base registry URL (used when `ref` is not set) | `image-registry.openshift-image-registry.svc:5000` |
 | `image.tag` | Image tag | `.Chart.AppVersion` |
 | `image.pullPolicy` | Image pull policy | `IfNotPresent` |
 
@@ -104,7 +122,7 @@ The chart references existing Secrets and ConfigMaps — it does not create them
 
 ```bash
 helm template my-release . \
-  --set image.repository=quay.io/example/myapp \
+  --set application.name=myapp \
   --set configMap.mount.enabled=true \
   --set configMap.mount.name=my-app-config \
   --set secret.mount.enabled=true \
@@ -149,7 +167,7 @@ To use Ingress instead of Route:
 
 ```bash
 helm template my-release . \
-  --set image.repository=quay.io/example/myapp \
+  --set application.name=myapp \
   --set route.enabled=false \
   --set ingress.enabled=true \
   --set "ingress.hosts[0].host=app.example.com" \
@@ -199,9 +217,6 @@ application:
     kind: git
     url: https://github.com/acme/my-service.git
     branch: main
-
-image:
-  repository: quay.io/acme/my-service
 ```
 
 This produces resources named `my-service` with labels:

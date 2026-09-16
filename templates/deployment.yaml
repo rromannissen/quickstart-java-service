@@ -28,8 +28,8 @@ spec:
       serviceAccountName: {{ include "quickstart-java-service.serviceAccountName" . }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       containers:
-        - name: {{ include "quickstart-java-service.name" . }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        - name: {{ include "quickstart-java-service.fullname" . }}
+          image: {{ include "quickstart-java-service.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http

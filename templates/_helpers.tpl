@@ -11,9 +11,9 @@ If release name already contains the chart name, avoid duplication.
 */}}
 {{- define "quickstart-java-service.fullname" -}}
 {{- if .Values.fullnameOverride }}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
+{{- regexReplaceAll "-+" (regexReplaceAll "[^a-z0-9-]" (.Values.fullnameOverride | lower) "-") "-" | trimPrefix "-" | trunc 63 | trimSuffix "-" }}
 {{- else if .Values.application }}
-{{- .Values.application.name | trunc 63 | trimSuffix "-" }}
+{{- regexReplaceAll "-+" (regexReplaceAll "[^a-z0-9-]" (.Values.application.name | lower) "-") "-" | trimPrefix "-" | trunc 63 | trimSuffix "-" }}
 {{- else }}
 {{- $name := default .Chart.Name .Values.nameOverride }}
 {{- if contains $name .Release.Name }}
@@ -75,11 +75,41 @@ konveyor.io/source-repository: {{ .Values.application.repository.url | quote }}
 {{- end }}
 
 {{/*
+Resolved namespace: namespace value > application.name > "default".
+*/}}
+{{- define "quickstart-java-service.namespace" -}}
+{{- if .Values.namespace }}
+{{- regexReplaceAll "-+" (regexReplaceAll "[^a-z0-9-]" (.Values.namespace | lower) "-") "-" | trimPrefix "-" | trunc 63 | trimSuffix "-" }}
+{{- else if and .Values.application .Values.application.name }}
+{{- regexReplaceAll "-+" (regexReplaceAll "[^a-z0-9-]" (.Values.application.name | lower) "-") "-" | trimPrefix "-" | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- "default" }}
+{{- end }}
+{{- end }}
+
+{{/*
+Full container image reference.
+If image.ref is set, use it as-is (for external registries).
+Otherwise, build from registry/namespace/fullname:tag.
+*/}}
+{{- define "quickstart-java-service.image" -}}
+{{- if .Values.image.ref }}
+{{- .Values.image.ref }}
+{{- else }}
+{{- $registry := .Values.image.registry }}
+{{- $ns := include "quickstart-java-service.namespace" . }}
+{{- $name := include "quickstart-java-service.fullname" . }}
+{{- $tag := .Values.image.tag | default .Chart.AppVersion }}
+{{- printf "%s/%s/%s:%s" $registry $ns $name $tag }}
+{{- end }}
+{{- end }}
+
+{{/*
 Selector labels.
 */}}
 {{- define "quickstart-java-service.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "quickstart-java-service.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/name: {{ include "quickstart-java-service.fullname" . }}
+app.kubernetes.io/instance: {{ include "quickstart-java-service.fullname" . }}
 {{- end }}
 
 {{/*

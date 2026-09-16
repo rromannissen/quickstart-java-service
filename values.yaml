@@ -1,7 +1,13 @@
 replicaCount: 1
 
+# Target namespace (defaults to application.name if available, otherwise "default")
+namespace: ""
+
 image:
-  repository: ""
+  # Full image reference — overrides registry/namespace/name convention when set (e.g. quay.io/acme/my-service:v1.0.0)
+  ref: ""
+  # Base registry for the built image (used when ref is not set)
+  registry: image-registry.openshift-image-registry.svc:5000
   # Defaults to .Chart.AppVersion if not set
   tag: ""
   pullPolicy: IfNotPresent
